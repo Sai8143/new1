@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rocking Photo Slideshow</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      background-color: #111827;
+      color: #F3F4F6;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    #slideshow-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background-color: #000;
+    }
+
+    .slide {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      transition: opacity 1.5s ease-in-out;
+    }
+
+    .slide.active {
+      opacity: 1;
+    }
+
+    .slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      animation-duration: 10s;
+      animation-iteration-count: infinite;
+      animation-direction: alternate;
+    }
+
+    .slide:nth-child(1) img { animation-name: kenburns-1; }
+    .slide:nth-child(2) img { animation-name: kenburns-2; }
+    .slide:nth-child(3) img { animation-name: kenburns-3; }
+    .slide:nth-child(4) img { animation-name: kenburns-4; }
+    .slide:nth-child(5) img { animation-name: kenburns-1; animation-direction: alternate-reverse; }
+    .slide:nth-child(6) img { animation-name: kenburns-2; animation-direction: alternate-reverse; }
+    .slide:nth-child(7) img { animation-name: kenburns-3; animation-direction: alternate-reverse; }
+
+    @keyframes kenburns-1 {
+      0% { transform: scale(1) translate(0, 0); }
+      100% { transform: scale(1.2) translate(-2%, -2%); }
+    }
+
+    @keyframes kenburns-2 {
+      0% { transform: scale(1) translate(0, 0); }
+      100% { transform: scale(1.25) translate(3%, 3%); }
+    }
+
+    @keyframes kenburns-3 {
+      0% { transform: scale(1.15) translate(0,0); }
+      100% { transform: scale(1) translate(0,0); }
+    }
+
+    @keyframes kenburns-4 {
+      0% { transform: scale(1.05) translate(-5%, 0); }
+      100% { transform: scale(1.1) translate(5%, 0); }
+    }
+
+    #fire-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .loader {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 8px solid #f3f3f3;
+      border-top: 8px solid #F59E0B;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      z-index: 100;
+    }
+
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    .info-box {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background-color: rgba(0,0,0,0.6);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      z-index: 10;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .slide img {
+        object-fit: cover;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="loader" class="loader"></div>
+
+  <div id="slideshow-container">
+    <canvas id="fire-canvas"></canvas>
+  </div>
+
+  <!-- <div class="info-box">
+    Photos by User. Fire effect and slideshow by AI. -->
+  <!-- </div> -->
+
+  <!-- Hidden autoplaying audio -->
+  <audio id="audio-player" autoplay loop hidden>
+    <source src="Hukum Reloaded (PenduJatt.Com.Se).mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+
+  <script>
+    const images = [
+      '18.jpg',
+      '17.jpg',
+      '16.jpg',
+      '15.jpg',
+      '11.jpg'
+    ];
+
+    let currentSlide = 0;
+    const slideDuration = 7000;
+    const slideshowContainer = document.getElementById('slideshow-container');
+    const loader = document.getElementById('loader');
+    let slides = [];
+    let imagesLoaded = 0;
+
+    function preloadImages() {
+      images.forEach((src, index) => {
+        const slideDiv = document.createElement('div');
+        slideDiv.classList.add('slide');
+
+        const img = new Image();
+        img.onload = () => {
+          imagesLoaded++;
+          if (imagesLoaded === images.length) {
+            loader.style.display = 'none';
+            startSlideshow();
+            startFireAnimation();
+          }
+        };
+        img.onerror = () => {
+          imagesLoaded++;
+          console.error(`Failed to load image: ${src}`);
+          if (imagesLoaded === images.length) {
+            loader.style.display = 'none';
+            startSlideshow();
+            startFireAnimation();
+          }
+        };
+        img.src = src;
+        img.alt = `Slide ${index + 1} - Image: ${src}`;
+
+        slideDiv.appendChild(img);
+        slideshowContainer.appendChild(slideDiv);
+        slides.push(slideDiv);
+      });
+    }
+
+    function showSlide(index) {
+      slides.forEach((slide, i) => {
+        slide.classList.toggle('active', i === index);
+      });
+    }
+
+    function nextSlide() {
+      currentSlide = (currentSlide + 1) % slides.length;
+      showSlide(currentSlide);
+    }
+
+    function startSlideshow() {
+      if (slides.length === 0) {
+        console.error("No slides available to start slideshow.");
+        const errorMsg = document.createElement('p');
+        errorMsg.textContent = "Error: Could not load images for the slideshow.";
+        errorMsg.style.color = "red";
+        errorMsg.style.textAlign = "center";
+        errorMsg.style.position = "absolute";
+        errorMsg.style.top = "50%";
+        errorMsg.style.left = "50%";
+        errorMsg.style.transform = "translate(-50%, -50%)";
+        slideshowContainer.appendChild(errorMsg);
+        return;
+      }
+      showSlide(currentSlide);
+      setInterval(nextSlide, slideDuration);
+    }
+
+    // Fire Particle Animation
+    const fireCanvas = document.getElementById('fire-canvas');
+    const ctx = fireCanvas.getContext('2d');
+    let particles = [];
+    const numParticles = 150;
+
+    function resizeCanvas() {
+      fireCanvas.width = window.innerWidth;
+      fireCanvas.height = window.innerHeight;
+    }
+
+    class Particle {
+      constructor(x, y) {
+        this.x = x || Math.random() * fireCanvas.width;
+        this.y = y || fireCanvas.height + Math.random() * 50;
+        this.size = Math.random() * 4 + 1;
+        this.speedY = Math.random() * 3 + 1;
+        this.speedX = (Math.random() * 2 - 1) * 0.5;
+        const colors = ['#FF4500', '#FFA500', '#FFD700', '#FF6347', '#FF8C00'];
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+        this.opacity = Math.random() * 0.5 + 0.5;
+      }
+
+      update() {
+        this.y -= this.speedY;
+        this.x += this.speedX;
+        this.opacity -= 0.01;
+
+        if (this.y < -this.size || this.opacity <= 0) {
+          this.y = fireCanvas.height + Math.random() * 20;
+          this.x = Math.random() * fireCanvas.width;
+          this.opacity = Math.random() * 0.5 + 0.5;
+          this.size = Math.random() * 4 + 1;
+          this.speedY = Math.random() * 3 + 1;
+        }
+      }
+
+      draw() {
+        ctx.globalAlpha = this.opacity;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    function initParticles() {
+      particles = [];
+      for (let i = 0; i < numParticles; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, fireCanvas.width, fireCanvas.height);
+      for (let i = 0; i < particles.length; i++) {
+        particles[i].update();
+        particles[i].draw();
+      }
+      requestAnimationFrame(animateParticles);
+    }
+
+    function startFireAnimation() {
+      resizeCanvas();
+      initParticles();
+      animateParticles();
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    preloadImages();
+</script>
+</body>
+</html>
